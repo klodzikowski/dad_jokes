@@ -174,6 +174,37 @@
       .app[data-started="true"] .hero { padding: .75rem 0 .5rem; }
       .app[data-started="true"] .hero-title { font-size: 1.8rem; }
       .app[data-started="true"] .hero-tagline { display: none; }
+      .app[data-started="true"] .starter-chips { display: none; }
+
+      /* Conversation starters: three pills under the tagline. Disappear
+         once the chat begins so they don't crowd the scroll area. */
+      .starter-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: .55rem;
+        justify-content: center;
+        margin-top: 1.4rem;
+      }
+      .starter-chip {
+        background: rgba(255, 255, 255, 0.78);
+        border: 1.5px solid rgba(65, 108, 127, .18);
+        border-radius: 999px;
+        padding: .55rem 1.1rem;
+        font-size: .95rem;
+        color: var(--blue-deep);
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+        transition: transform 140ms ease, background 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
+        backdrop-filter: blur(6px);
+      }
+      .starter-chip:hover {
+        background: #ffffff;
+        border-color: var(--blue);
+        transform: translateY(-2px);
+        box-shadow: var(--shadow);
+      }
+      .starter-chip:active { transform: translateY(0); }
 
       @keyframes wobble-in {
         0%   { transform: scale(.6) rotate(-6deg); opacity: 0; }
@@ -438,6 +469,11 @@
       <section class="hero" id="hero">
         <h1 class="hero-title">Dad <span class="alt">Jokes</span></h1>
         <p class="hero-tagline">Tell me about your day. I'll find a joke in it.</p>
+        <div class="starter-chips" id="starter-chips">
+          <button type="button" class="starter-chip" data-prompt="Tell me a joke">Tell me a joke</button>
+          <button type="button" class="starter-chip" data-prompt="Let's talk about my day">Talk about my day</button>
+          <button type="button" class="starter-chip" data-prompt="Let's cook something up together">Cook something up</button>
+        </div>
       </section>
 
       <main class="chat" id="chat"></main>
@@ -547,6 +583,14 @@
 
       refreshKeyChip();
       if (!getKey()) openKeyModal();
+
+      // Starter chips: fill the input and submit.
+      document.querySelectorAll(".starter-chip").forEach((chip) => {
+        chip.addEventListener("click", () => {
+          input.value = chip.dataset.prompt || chip.textContent;
+          form.requestSubmit();
+        });
+      });
 
       form.addEventListener("submit", async (event) => {
         event.preventDefault();
