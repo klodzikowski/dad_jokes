@@ -1,19 +1,20 @@
-# 💬 Chatbot template
+# Dad Jokes
 
-A simple Streamlit app that shows how to build a chatbot using OpenAI's GPT-3.5.
+Tell it about your day. It finds a dad joke in it.
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://chatbot-template.streamlit.app/)
+A single static HTML page hosted on GitHub Pages. Bring your own OpenAI API key — it lives in your browser session only, never stored on a server, never billed to anyone but you.
 
-### How to run it on your own machine
+## Try it
 
-1. Install the requirements
+[klodzikowski.github.io/dad_jokes](https://klodzikowski.github.io/dad_jokes/)
 
-   ```
-   $ pip install -r requirements.txt
-   ```
+## How it's built
 
-2. Run the app
+Forked from my [LLM assistant template](https://github.com/klodzikowski/lmt-chatbot), then stripped down to just the essentials: no admin drawer, no model picker, no sampling sliders. One system prompt, one job.
 
-   ```
-   $ streamlit run streamlit_app.py
-   ```
+Under the hood:
+
+- `gpt-4o-mini` via the OpenAI Chat Completions API, streamed token-by-token
+- Dry British dad in the system prompt
+- Pastel "heeler" palette, cartoonish title, a confetti burst for every reply
+- Your API key stays in `sessionStorage` (tab-lifetime only, never committed, never synced)

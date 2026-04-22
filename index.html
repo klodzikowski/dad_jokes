@@ -1,0 +1,596 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Dad Jokes</title>
+    <meta
+      name="description"
+      content="Tell me about your day. Get a dad joke."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;800&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      :root {
+        /* Bluey-inspired palette: warm cream, heeler blues, coral + yellow. */
+        --cream: #fff8ed;
+        --cream-deep: #fbeeda;
+        --blue: #7ec8e3;
+        --blue-deep: #3d6d85;
+        --blue-ink: #1a3a48;
+        --coral: #f8a496;
+        --coral-deep: #d56b5c;
+        --coral-ink: #5b2e27;
+        --yellow: #ffd97d;
+        --pastel-blue: #cbe7f2;
+        --text: #2c3e50;
+        --text-soft: #5d6d7e;
+        --shadow: 0 6px 18px rgba(61, 109, 133, 0.12);
+        --shadow-lg: 0 12px 32px rgba(61, 109, 133, 0.18);
+      }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body {
+        margin: 0;
+        font-family: "Baloo 2", system-ui, -apple-system, "Segoe UI", sans-serif;
+        background: var(--cream);
+        color: var(--text);
+        line-height: 1.5;
+        overflow: hidden;
+      }
+      /* Background flourish: soft overlapping blobs, very subtle. */
+      body::before, body::after {
+        content: "";
+        position: fixed;
+        border-radius: 50%;
+        z-index: 0;
+        pointer-events: none;
+        filter: blur(60px);
+        opacity: .55;
+      }
+      body::before {
+        width: 420px; height: 420px;
+        top: -120px; left: -100px;
+        background: var(--pastel-blue);
+      }
+      body::after {
+        width: 380px; height: 380px;
+        bottom: -120px; right: -80px;
+        background: var(--yellow);
+        opacity: .4;
+      }
+
+      button { font: inherit; cursor: pointer; }
+
+      /* Top bar: just a small key chip on the right. */
+      .topbar {
+        position: fixed;
+        top: 0;
+        right: 0;
+        padding: 1rem 1.25rem;
+        z-index: 5;
+      }
+      .key-chip {
+        background: rgba(255, 255, 255, .75);
+        border: 1px solid rgba(61, 109, 133, .15);
+        border-radius: 999px;
+        padding: .35rem .85rem;
+        font-size: .82rem;
+        color: var(--blue-deep);
+        font-weight: 600;
+        display: inline-flex;
+        align-items: center;
+        gap: .4rem;
+        backdrop-filter: blur(8px);
+        transition: background 120ms ease, transform 120ms ease;
+      }
+      .key-chip:hover { background: rgba(255, 255, 255, .95); transform: translateY(-1px); }
+      .key-chip .dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--coral);
+      }
+      .key-chip.ok .dot { background: #66c07b; }
+
+      /* App shell. */
+      .app {
+        position: relative;
+        z-index: 1;
+        max-width: 760px;
+        margin: 0 auto;
+        height: 100vh;
+        display: flex;
+        flex-direction: column;
+        padding: 1rem 1.25rem 1rem;
+      }
+
+      /* Hero landing: shrinks to a compact header once the chat starts. */
+      .hero {
+        padding: 2rem 0 1.25rem;
+        text-align: center;
+        transition: padding 300ms ease;
+      }
+      .hero-title {
+        font-weight: 800;
+        font-size: clamp(2.8rem, 7vw, 4.4rem);
+        letter-spacing: -0.03em;
+        margin: 0;
+        color: var(--blue-deep);
+        line-height: 1;
+        animation: wobble-in 0.9s cubic-bezier(.34,1.56,.64,1);
+        transform-origin: center bottom;
+      }
+      .hero-title .alt { color: var(--coral-deep); }
+      .hero-tagline {
+        margin: .5rem 0 0;
+        font-size: 1.05rem;
+        color: var(--text-soft);
+        font-weight: 600;
+      }
+      .app[data-started="true"] .hero { padding: .75rem 0 .5rem; }
+      .app[data-started="true"] .hero-title { font-size: 1.8rem; }
+      .app[data-started="true"] .hero-tagline { display: none; }
+
+      @keyframes wobble-in {
+        0%   { transform: scale(.6) rotate(-6deg); opacity: 0; }
+        55%  { transform: scale(1.08) rotate(3deg); opacity: 1; }
+        80%  { transform: scale(.98) rotate(-1.5deg); }
+        100% { transform: scale(1) rotate(-1deg); }
+      }
+
+      /* Chat. */
+      main.chat {
+        flex: 1;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: .75rem;
+        padding: .5rem .25rem 1rem;
+      }
+      main.chat::-webkit-scrollbar { width: 8px; }
+      main.chat::-webkit-scrollbar-thumb {
+        background: rgba(61, 109, 133, .18);
+        border-radius: 4px;
+      }
+      .msg {
+        max-width: 82%;
+        padding: .7rem 1rem;
+        border-radius: 22px;
+        font-size: 1rem;
+        word-wrap: break-word;
+        white-space: pre-wrap;
+        box-shadow: var(--shadow);
+        animation: bubble-in 280ms cubic-bezier(.34,1.56,.64,1);
+      }
+      @keyframes bubble-in {
+        0%   { transform: scale(.85) translateY(6px); opacity: 0; }
+        100% { transform: scale(1) translateY(0); opacity: 1; }
+      }
+      .msg.user {
+        align-self: flex-end;
+        background: var(--coral);
+        color: var(--coral-ink);
+        border-bottom-right-radius: 6px;
+      }
+      .msg.assistant {
+        align-self: flex-start;
+        background: var(--pastel-blue);
+        color: var(--blue-ink);
+        border-bottom-left-radius: 6px;
+      }
+      .msg.error {
+        align-self: stretch;
+        background: #fde4e1;
+        color: #8a3a2e;
+        border-radius: 14px;
+        font-size: .92rem;
+      }
+      .msg .typing {
+        display: inline-flex; gap: 3px;
+      }
+      .msg .typing span {
+        width: 6px; height: 6px; border-radius: 50%;
+        background: currentColor;
+        opacity: .5;
+        animation: typing 1s infinite ease-in-out;
+      }
+      .msg .typing span:nth-child(2) { animation-delay: .15s; }
+      .msg .typing span:nth-child(3) { animation-delay: .3s; }
+      @keyframes typing {
+        0%, 60%, 100% { transform: translateY(0); opacity: .35; }
+        30% { transform: translateY(-4px); opacity: 1; }
+      }
+
+      /* Composer. */
+      form.composer {
+        display: flex;
+        gap: .6rem;
+        padding: .5rem 0 .5rem;
+      }
+      form.composer input {
+        flex: 1;
+        padding: .85rem 1.1rem;
+        border: 2px solid transparent;
+        border-radius: 999px;
+        background: #ffffff;
+        color: var(--text);
+        font: inherit;
+        font-size: 1rem;
+        box-shadow: var(--shadow);
+        transition: border-color 120ms ease;
+      }
+      form.composer input::placeholder { color: #a0adb9; }
+      form.composer input:focus {
+        outline: none;
+        border-color: var(--blue);
+      }
+      form.composer button {
+        padding: 0 1.5rem;
+        border: 0;
+        border-radius: 999px;
+        background: var(--blue);
+        color: white;
+        font-weight: 700;
+        font-size: 1rem;
+        box-shadow: var(--shadow);
+        transition: transform 100ms ease, background 120ms ease;
+      }
+      form.composer button:hover:not(:disabled) {
+        background: var(--blue-deep);
+        transform: translateY(-1px);
+      }
+      form.composer button:active:not(:disabled) { transform: translateY(1px); }
+      form.composer button:disabled {
+        background: #c8d4db;
+        cursor: not-allowed;
+        box-shadow: none;
+      }
+
+      /* API key modal. */
+      .modal-backdrop {
+        position: fixed;
+        inset: 0;
+        background: rgba(26, 58, 72, .35);
+        backdrop-filter: blur(6px);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        z-index: 20;
+        padding: 1.25rem;
+      }
+      .modal-backdrop.open { display: flex; }
+      .modal {
+        background: white;
+        border-radius: 24px;
+        padding: 2rem 1.8rem 1.75rem;
+        width: 100%;
+        max-width: 440px;
+        box-shadow: var(--shadow-lg);
+        animation: bubble-in 280ms cubic-bezier(.34,1.56,.64,1);
+      }
+      .modal h2 {
+        margin: 0 0 .4rem;
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: var(--blue-deep);
+        letter-spacing: -0.01em;
+      }
+      .modal p {
+        margin: 0 0 1.2rem;
+        color: var(--text-soft);
+        font-size: .95rem;
+      }
+      .modal p a { color: var(--blue-deep); }
+      .modal input {
+        width: 100%;
+        padding: .85rem 1.1rem;
+        border: 2px solid rgba(61, 109, 133, .15);
+        border-radius: 12px;
+        background: var(--cream);
+        font: inherit;
+        font-size: 1rem;
+        color: var(--text);
+      }
+      .modal input:focus {
+        outline: none;
+        border-color: var(--blue);
+      }
+      .modal .actions {
+        display: flex;
+        gap: .6rem;
+        margin-top: 1.1rem;
+        justify-content: flex-end;
+      }
+      .modal .actions button {
+        padding: .7rem 1.3rem;
+        border: 0;
+        border-radius: 999px;
+        font-weight: 700;
+        font-size: .95rem;
+      }
+      .modal .actions .primary {
+        background: var(--blue);
+        color: white;
+      }
+      .modal .actions .primary:hover:not(:disabled) { background: var(--blue-deep); }
+      .modal .actions .primary:disabled { background: #c8d4db; cursor: not-allowed; }
+      .modal .actions .ghost {
+        background: transparent;
+        color: var(--text-soft);
+      }
+      .modal .actions .ghost:hover { color: var(--text); }
+      .modal .note {
+        font-size: .8rem;
+        color: var(--text-soft);
+        margin-top: .9rem;
+      }
+
+      /* Confetti. Pure CSS pieces spawned by JS; each piece falls and fades. */
+      .confetti {
+        position: fixed;
+        top: -20px;
+        width: 10px;
+        height: 14px;
+        pointer-events: none;
+        z-index: 30;
+        border-radius: 2px;
+        animation: fall 2.3s ease-out forwards;
+      }
+      @keyframes fall {
+        0%   { transform: translateY(0) rotate(0deg); opacity: 1; }
+        100% { transform: translateY(110vh) rotate(720deg); opacity: 0; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <button type="button" class="key-chip" id="key-chip" title="Update your OpenAI API key">
+        <span class="dot"></span>
+        <span id="key-chip-label">Add your API key</span>
+      </button>
+    </div>
+
+    <div class="app" id="app" data-started="false">
+      <section class="hero" id="hero">
+        <h1 class="hero-title">Dad <span class="alt">Jokes</span></h1>
+        <p class="hero-tagline">Tell me about your day. I'll find a joke in it.</p>
+      </section>
+
+      <main class="chat" id="chat"></main>
+
+      <form class="composer" id="composer">
+        <input
+          id="input"
+          type="text"
+          placeholder="Tell me about your day…"
+          autocomplete="off"
+          required
+        />
+        <button id="send" type="submit">Send</button>
+      </form>
+    </div>
+
+    <div class="modal-backdrop" id="modal">
+      <div class="modal">
+        <h2>Add your OpenAI key</h2>
+        <p>
+          Your key lives in your browser only — it's never sent anywhere except
+          straight to OpenAI. Grab one at
+          <a href="https://platform.openai.com/account/api-keys" target="_blank" rel="noopener">platform.openai.com</a>.
+        </p>
+        <input id="key-input" type="password" placeholder="sk-…" autocomplete="off" />
+        <div class="actions">
+          <button type="button" class="ghost" id="key-cancel">Cancel</button>
+          <button type="button" class="primary" id="key-save" disabled>Save</button>
+        </div>
+        <p class="note">No costs to the author — you only pay for your own tokens.</p>
+      </div>
+    </div>
+
+    <script>
+      const SYSTEM_PROMPT =
+        "You are a dad with dry British humour. Every reply is a relevant dad joke " +
+        "about what the user just said. Short, groan-worthy, deadpan. Emojis allowed — " +
+        "use them sparingly as punchlines, like a raised eyebrow, not confetti. " +
+        "Family friendly. British English.";
+      const MODEL = "gpt-4o-mini";
+      const TEMPERATURE = 0.9;
+      const TOP_P = 1.0;
+      const MAX_TOKENS = 300;
+      const KEY_STORAGE = "dad-jokes-openai-key";
+      const CONFETTI_COLORS = ["#7ec8e3", "#ffd97d", "#f8a496", "#cbe7f2", "#d56b5c"];
+
+      const app = document.getElementById("app");
+      const chatEl = document.getElementById("chat");
+      const form = document.getElementById("composer");
+      const input = document.getElementById("input");
+      const sendBtn = document.getElementById("send");
+      const keyChip = document.getElementById("key-chip");
+      const keyChipLabel = document.getElementById("key-chip-label");
+      const modal = document.getElementById("modal");
+      const keyInput = document.getElementById("key-input");
+      const keySave = document.getElementById("key-save");
+      const keyCancel = document.getElementById("key-cancel");
+
+      const history = [];
+
+      function getKey() {
+        return sessionStorage.getItem(KEY_STORAGE) || "";
+      }
+      function setKey(value) {
+        if (value) sessionStorage.setItem(KEY_STORAGE, value);
+        else sessionStorage.removeItem(KEY_STORAGE);
+        refreshKeyChip();
+      }
+      function refreshKeyChip() {
+        const has = !!getKey();
+        keyChip.classList.toggle("ok", has);
+        keyChipLabel.textContent = has ? "API key saved" : "Add your API key";
+      }
+
+      function openKeyModal() {
+        keyInput.value = getKey();
+        keySave.disabled = !keyInput.value.trim();
+        modal.classList.add("open");
+        setTimeout(() => keyInput.focus(), 50);
+      }
+      function closeKeyModal() {
+        modal.classList.remove("open");
+      }
+
+      keyChip.addEventListener("click", openKeyModal);
+      keyCancel.addEventListener("click", closeKeyModal);
+      keySave.addEventListener("click", () => {
+        setKey(keyInput.value.trim());
+        closeKeyModal();
+        input.focus();
+      });
+      keyInput.addEventListener("input", () => {
+        keySave.disabled = !keyInput.value.trim();
+      });
+      keyInput.addEventListener("keydown", (event) => {
+        if (event.key === "Enter" && keyInput.value.trim()) {
+          event.preventDefault();
+          keySave.click();
+        }
+      });
+      modal.addEventListener("click", (event) => {
+        if (event.target === modal) closeKeyModal();
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape" && modal.classList.contains("open")) closeKeyModal();
+      });
+
+      refreshKeyChip();
+      if (!getKey()) openKeyModal();
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const text = input.value.trim();
+        if (!text) return;
+        if (!getKey()) {
+          openKeyModal();
+          return;
+        }
+
+        app.dataset.started = "true";
+        addMessage("user", text);
+        history.push({ role: "user", content: text });
+        input.value = "";
+        sendBtn.disabled = true;
+
+        const loading = addMessage("assistant", "");
+        loading.innerHTML = '<span class="typing"><span></span><span></span><span></span></span>';
+
+        try {
+          const reply = await streamReply(loading);
+          history.push({ role: "assistant", content: reply });
+          fireConfetti();
+        } catch (err) {
+          loading.remove();
+          addMessage("error", err.message || String(err));
+          history.pop();
+        } finally {
+          sendBtn.disabled = false;
+          input.focus();
+        }
+      });
+
+      function addMessage(role, text) {
+        const el = document.createElement("div");
+        el.className = `msg ${role}`;
+        el.textContent = text;
+        chatEl.appendChild(el);
+        el.scrollIntoView({ behavior: "smooth", block: "end" });
+        return el;
+      }
+
+      async function streamReply(targetEl) {
+        const payload = {
+          model: MODEL,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            ...history,
+          ],
+          temperature: TEMPERATURE,
+          top_p: TOP_P,
+          max_completion_tokens: MAX_TOKENS,
+          stream: true,
+        };
+        const response = await fetch("https://api.openai.com/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${getKey()}`,
+          },
+          body: JSON.stringify(payload),
+        });
+        if (!response.ok) {
+          const body = await response.json().catch(() => ({}));
+          throw new Error(body?.error?.message || `HTTP ${response.status}`);
+        }
+
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = "";
+        let reply = "";
+        let firstToken = true;
+
+        const processLine = (rawLine) => {
+          const line = rawLine.trim();
+          if (!line.startsWith("data:")) return;
+          const data = line.slice(5).trim();
+          if (!data || data === "[DONE]") return;
+          let chunk;
+          try { chunk = JSON.parse(data); } catch { return; }
+          const delta = chunk.choices?.[0]?.delta?.content;
+          if (!delta) return;
+          if (firstToken) {
+            targetEl.textContent = "";
+            firstToken = false;
+          }
+          reply += delta;
+          targetEl.textContent = reply;
+          targetEl.scrollIntoView({ behavior: "smooth", block: "end" });
+        };
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          for (const raw of lines) {
+            if (raw.trim() === "data: [DONE]") return reply;
+            processLine(raw);
+          }
+        }
+        buffer += decoder.decode();
+        if (buffer.trim()) processLine(buffer);
+        return reply;
+      }
+
+      /* Fire a burst of confetti pieces. Fully CSS-animated, cleaned up on end. */
+      function fireConfetti() {
+        const count = 36;
+        for (let i = 0; i < count; i++) {
+          const piece = document.createElement("div");
+          piece.className = "confetti";
+          piece.style.left = Math.random() * 100 + "vw";
+          piece.style.background =
+            CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)];
+          piece.style.animationDelay = Math.random() * 0.3 + "s";
+          piece.style.animationDuration = 1.8 + Math.random() * 1.2 + "s";
+          piece.style.transform = `rotate(${Math.random() * 360}deg)`;
+          piece.style.width = 7 + Math.random() * 7 + "px";
+          piece.style.height = 10 + Math.random() * 8 + "px";
+          document.body.appendChild(piece);
+          setTimeout(() => piece.remove(), 3200);
+        }
+      }
+    </script>
+  </body>
+</html>
