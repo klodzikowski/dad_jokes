@@ -513,9 +513,9 @@
         "about what the user just said. Short, groan-worthy, deadpan. Emojis allowed — " +
         "use them sparingly as punchlines, like a raised eyebrow, not confetti. " +
         "Family friendly. British English.";
-      const MODEL = "gpt-4.1";
-      const TEMPERATURE = 0.9;
-      const TOP_P = 1.0;
+      const MODEL = "gpt-5.4-mini";
+      // gpt-5.4-mini is reasoning-tuned — temperature and top_p must stay at
+      // their server defaults, so they're not sent on the request.
       const MAX_TOKENS = 300;
       const KEY_STORAGE = "dad-jokes-openai-key";
       const CONFETTI_COLORS = ["#7ec8e3", "#ffd97d", "#f8a496", "#cbe7f2", "#d56b5c"];
@@ -640,8 +640,6 @@
             { role: "system", content: SYSTEM_PROMPT },
             ...history,
           ],
-          temperature: TEMPERATURE,
-          top_p: TOP_P,
           max_completion_tokens: MAX_TOKENS,
           stream: true,
         };
