@@ -596,25 +596,6 @@
         color: var(--text-soft);
       }
       .modal .actions .ghost:hover { color: var(--text); }
-      .modal .note {
-        font-size: .78rem;
-        color: var(--text-soft);
-        margin-top: 1rem;
-        line-height: 1.55;
-      }
-      .modal .schema {
-        margin-top: .4rem;
-        font-size: .72rem;
-        color: var(--text-soft);
-        background: var(--cream);
-        padding: .55rem .7rem;
-        border-radius: 8px;
-        font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
-        white-space: pre-wrap;
-        word-break: break-word;
-        max-height: 110px;
-        overflow-y: auto;
-      }
 
       /* Confetti. Pure CSS pieces spawned by JS; each piece falls and fades. */
       .confetti {
@@ -749,27 +730,6 @@
           <button type="button" class="primary" id="key-save" disabled>Save</button>
         </div>
 
-        <p class="note">
-          Without Supabase, the app still works — chats just stay in this tab and
-          vanish on close. To enable persistence, run this SQL once in your Supabase project's SQL Editor:
-        </p>
-        <div class="schema">create table dad_jokes_threads (
-  id          uuid primary key default gen_random_uuid(),
-  user_id     text default 'demo',
-  title       text default 'New chat',
-  created_at  timestamptz default now(),
-  updated_at  timestamptz default now()
-);
-create table dad_jokes_messages (
-  id          bigserial primary key,
-  thread_id   uuid references dad_jokes_threads(id) on delete cascade,
-  user_id     text default 'demo',
-  role        text,
-  content     text,
-  created_at  timestamptz default now()
-);
-alter table dad_jokes_threads disable row level security;
-alter table dad_jokes_messages disable row level security;</div>
       </div>
     </div>
 
