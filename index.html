@@ -746,7 +746,6 @@
       const KEY_STORAGE = "dad-jokes-openai-key";          // sessionStorage
       const SUPABASE_URL_STORAGE = "dad-jokes-supabase-url"; // localStorage
       const SUPABASE_KEY_STORAGE = "dad-jokes-supabase-key"; // localStorage
-      const LAST_THREAD_STORAGE = "dad-jokes-last-thread";   // localStorage
       const CONFETTI_COLORS = ["#7ec8e3", "#ffd97d", "#f8a496", "#cbe7f2", "#d56b5c"];
 
       const app = document.getElementById("app");
@@ -932,12 +931,9 @@
           if (error) throw error;
           threads = data || [];
           renderThreads();
-
-          // Restore the last active thread, if it still exists.
-          const last = localStorage.getItem(LAST_THREAD_STORAGE);
-          if (last && threads.some((t) => t.id === last)) {
-            await switchToThread(last, { closeAfter: false });
-          }
+          // Intentionally no auto-restore: each load opens to the empty
+          // hero. Past chats stay in the drawer; the user picks one (or
+          // starts fresh) explicitly.
         } catch (err) {
           console.error("loadThreads failed:", err);
         }
@@ -980,7 +976,6 @@
       async function switchToThread(threadId, { closeAfter = true } = {}) {
         if (!supabaseClient) return;
         currentThreadId = threadId;
-        localStorage.setItem(LAST_THREAD_STORAGE, threadId);
         history.length = 0;
         chatEl.innerHTML = "";
         app.dataset.started = "true";
@@ -1015,7 +1010,6 @@
           if (error) throw error;
           threads.unshift(data);
           currentThreadId = data.id;
-          localStorage.setItem(LAST_THREAD_STORAGE, data.id);
           renderThreads();
           return data.id;
         } catch (err) {
@@ -1026,7 +1020,6 @@
 
       function startNewChat() {
         currentThreadId = null;
-        localStorage.removeItem(LAST_THREAD_STORAGE);
         history.length = 0;
         chatEl.innerHTML = "";
         app.dataset.started = "false";
