@@ -408,6 +408,39 @@
         background: rgba(61, 109, 133, .18);
         border-radius: 4px;
       }
+      /* Each message lives inside a wrap that also holds the per-message
+         delete button. The wrap controls the bubble's column alignment;
+         the button appears under the bubble on hover. */
+      .msg-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: .15rem;
+        max-width: 100%;
+      }
+      .msg-wrap-user { align-items: flex-end; }
+      .msg-wrap-assistant { align-items: flex-start; }
+      .msg-wrap-error { align-items: stretch; }
+      .msg-delete {
+        background: transparent;
+        border: 0;
+        color: var(--text-soft);
+        font-size: .82rem;
+        font-family: inherit;
+        font-weight: 600;
+        cursor: pointer;
+        padding: .15rem .55rem;
+        border-radius: 8px;
+        opacity: 0;
+        transition: opacity 100ms ease, background 100ms ease, color 100ms ease;
+        line-height: 1;
+      }
+      .msg-wrap:hover .msg-delete { opacity: .55; }
+      .msg-delete:hover {
+        opacity: 1;
+        background: rgba(189, 95, 79, .15);
+        color: var(--coral-deep);
+      }
+
       .msg {
         max-width: 82%;
         padding: .7rem 1rem;
@@ -1011,7 +1044,7 @@
             .order("created_at", { ascending: true });
           if (error) throw error;
           (data || []).forEach((msg) => {
-            addMessage(msg.role, msg.content);
+            addMessage(msg.role, msg.content, msg.id);
             history.push({ role: msg.role, content: msg.content });
           });
         } catch (err) {
@@ -1052,11 +1085,15 @@
       }
 
       async function saveMessage(threadId, role, content) {
-        if (!supabaseClient || !threadId) return;
+        if (!supabaseClient || !threadId) return null;
         try {
-          await supabaseClient
+          // Insert and read back the row so we get the bigserial id.
+          const { data: inserted, error: insErr } = await supabaseClient
             .from("dad_jokes_messages")
-            .insert({ thread_id: threadId, user_id: "demo", role, content });
+            .insert({ thread_id: threadId, user_id: "demo", role, content })
+            .select()
+            .single();
+          if (insErr) throw insErr;
 
           // Touch updated_at, and set the title from the first user message
           // if it's still on the default "New chat".
@@ -1081,8 +1118,10 @@
             (a, b) => new Date(b.updated_at) - new Date(a.updated_at)
           );
           renderThreads();
+          return inserted;
         } catch (err) {
           console.error("saveMessage failed:", err);
+          return null;
         }
       }
 
@@ -1151,9 +1190,16 @@
           await createThread();
         }
 
-        addMessage("user", text);
+        const userMsg = addMessage("user", text);
         history.push({ role: "user", content: text });
-        if (currentThreadId) saveMessage(currentThreadId, "user", text);
+        if (currentThreadId) {
+          // Save fires in parallel with the streaming reply; once the row is
+          // back, attach its id to the bubble so the delete button can wipe
+          // both the DOM and the DB row in one click.
+          saveMessage(currentThreadId, "user", text).then((row) => {
+            if (row && userMsg._wrap) userMsg._wrap.dataset.messageId = row.id;
+          });
+        }
         input.value = "";
         sendBtn.disabled = true;
 
@@ -1163,10 +1209,13 @@
         try {
           const reply = await streamReply(loading);
           history.push({ role: "assistant", content: reply });
-          if (currentThreadId) saveMessage(currentThreadId, "assistant", reply);
+          if (currentThreadId) {
+            const row = await saveMessage(currentThreadId, "assistant", reply);
+            if (row && loading._wrap) loading._wrap.dataset.messageId = row.id;
+          }
           fireConfetti();
         } catch (err) {
-          loading.remove();
+          loading._wrap.remove();
           addMessage("error", err.message || String(err));
           history.pop();
         } finally {
@@ -1175,13 +1224,64 @@
         }
       });
 
-      function addMessage(role, text) {
+      function addMessage(role, text, messageId = null) {
+        const wrap = document.createElement("div");
+        wrap.className = `msg-wrap msg-wrap-${role}`;
+        if (messageId) wrap.dataset.messageId = messageId;
+
         const el = document.createElement("div");
         el.className = `msg ${role}`;
         el.textContent = text;
-        chatEl.appendChild(el);
+        wrap.appendChild(el);
+
+        // Errors aren't deletable — they have no DB row and clear naturally
+        // on the next send.
+        if (role !== "error") {
+          const del = document.createElement("button");
+          del.type = "button";
+          del.className = "msg-delete";
+          del.title = "Delete this message";
+          del.textContent = "× delete";
+          del.addEventListener("click", () => deleteMessage(wrap));
+          wrap.appendChild(del);
+        }
+
+        chatEl.appendChild(wrap);
         el.scrollIntoView({ behavior: "smooth", block: "end" });
+        // Stash the wrap on el so callers that captured `el` (e.g. the
+        // streaming target) can remove the whole wrap when needed.
+        el._wrap = wrap;
         return el;
+      }
+
+      async function deleteMessage(wrap) {
+        const msgEl = wrap.querySelector(".msg");
+        if (!msgEl) return;
+        const role = msgEl.classList.contains("user") ? "user" : "assistant";
+        const content = msgEl.textContent;
+        const messageId = wrap.dataset.messageId;
+
+        // Remove from in-memory history (first matching role+content).
+        const idx = history.findIndex(
+          (h) => h.role === role && h.content === content
+        );
+        if (idx >= 0) history.splice(idx, 1);
+
+        // Remove from DOM.
+        wrap.remove();
+
+        // Remove from DB if persisted.
+        if (supabaseClient && messageId) {
+          try {
+            const { error } = await supabaseClient
+              .from("dad_jokes_messages")
+              .delete()
+              .eq("id", messageId);
+            if (error) throw error;
+          } catch (err) {
+            console.error("deleteMessage failed:", err);
+          }
+        }
       }
 
       async function streamReply(targetEl) {
