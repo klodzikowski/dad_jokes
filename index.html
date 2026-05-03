@@ -548,7 +548,10 @@
       }
       .modal p a { color: var(--blue-deep); }
       .modal label {
-        display: block;
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: .8rem;
         font-weight: 700;
         font-size: .85rem;
         color: var(--blue-deep);
@@ -557,6 +560,17 @@
       .modal label .optional {
         color: var(--text-soft);
         font-weight: 500;
+      }
+      .modal label a {
+        font-size: .76rem;
+        color: var(--blue);
+        font-weight: 600;
+        text-decoration: none;
+        white-space: nowrap;
+      }
+      .modal label a:hover {
+        color: var(--blue-deep);
+        text-decoration: underline;
       }
       .modal input {
         width: 100%;
@@ -716,13 +730,22 @@
           so your chat history persists across reloads.
         </p>
 
-        <label for="key-input">OpenAI API key</label>
+        <label for="key-input">
+          <span>OpenAI API key</span>
+          <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">Get key ↗</a>
+        </label>
         <input id="key-input" type="password" placeholder="sk-…" autocomplete="off" />
 
-        <label for="supabase-url-input">Supabase URL <span class="optional">(optional, for chat persistence)</span></label>
+        <label for="supabase-url-input">
+          <span>Supabase URL <span class="optional">(optional)</span></span>
+          <a href="https://supabase.com/dashboard/project/_/settings/api-keys" target="_blank" rel="noopener">From your project ↗</a>
+        </label>
         <input id="supabase-url-input" type="text" placeholder="https://xxxxxxxx.supabase.co" autocomplete="off" />
 
-        <label for="supabase-key-input">Supabase anon key <span class="optional">(optional)</span></label>
+        <label for="supabase-key-input">
+          <span>Supabase anon key <span class="optional">(optional)</span></span>
+          <a href="https://supabase.com/dashboard/project/_/settings/api-keys" target="_blank" rel="noopener">From your project ↗</a>
+        </label>
         <input id="supabase-key-input" type="password" placeholder="sb_publishable_… or eyJ…" autocomplete="off" />
 
         <div class="actions">
