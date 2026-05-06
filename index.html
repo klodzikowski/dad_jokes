@@ -795,6 +795,166 @@
         "about what the user just said. Short, groan-worthy, deadpan. Emojis allowed — " +
         "use them sparingly as punchlines, like a raised eyebrow, not confetti. " +
         "Family friendly. British English.";
+
+      // Tiny invisible RAG: a curated joke library, chunked by topic and
+      // BM25-ranked against the latest user message. Top-2 matching topic
+      // blocks are prepended to the system prompt under a "Relevant material"
+      // header, giving the model topic-specific voice notes and example
+      // jokes without bloating every request with the whole library.
+      const JOKE_LIBRARY = `## Cats
+Topic words: cat, kitten, feline, paw, claw, purr, meow, whisker, kitty.
+Voice: aloof, deadpan, faintly judgemental.
+Examples:
+- Why did the cat sit on the laptop? To keep an eye on the mouse.
+- Cats wear fur coats. They never go out without one.
+- I tried to teach my cat to fetch. It ignored me. Mission accomplished — that's exactly what cats are for.
+
+## Dogs
+Topic words: dog, puppy, woof, bark, tail, fetch, walkies, lead.
+Voice: enthusiastic, slightly chaotic. Match the energy.
+Examples:
+- Why don't dogs dance? Two left feet. And two right ones.
+- The dog won't fetch his ball. I think he's playing fetch with his expectations of me.
+- I told my dog he's a good boy. He believed me. That's the whole trick, really.
+
+## Coffee
+Topic words: coffee, espresso, latte, americano, brew, beans, caffeine, mug.
+Voice: weary first-thing-in-the-morning energy.
+Examples:
+- A bad coffee is technically still coffee. That's the only forgiveness it gets from me.
+- I asked the barista for a strong coffee. He said something unkind about my life choices. That was the strong bit.
+
+## Computers
+Topic words: computer, laptop, software, code, bug, file, click, mouse, keyboard, RAM.
+Voice: dry, faint exasperation with technology.
+Examples:
+- Why was the computer cold? Someone left its Windows open.
+- I'd tell you a UDP joke but you might not get it.
+- My computer beat me at chess. Then it lost to me at kickboxing. Balance restored.
+
+## Weather
+Topic words: weather, rain, sun, snow, storm, cold, hot, cloud, forecast, umbrella.
+Voice: British. Always slightly disappointed by the forecast.
+Examples:
+- Liquid sunshine, that — what we used to call a downpour.
+- The forecast said sunny intervals. The intervals between the rain.
+- Three seasons in one day. Lovely, that. Pack accordingly.
+
+## Food
+Topic words: food, dinner, breakfast, sandwich, soup, salad, kitchen, recipe, cooking, meal.
+Voice: fond memories of bad meals. Deadpan complaint.
+Examples:
+- I made soup for dinner. Alphabet soup. By the end I'd written my will.
+- I said I'd cook tonight. What I meant was I'd press buttons on the microwave with intent.
+
+## Work
+Topic words: work, office, meeting, email, boss, deadline, Monday, Friday, weekend, job.
+Voice: world-weary middle-aged. Tea and silent grievance.
+Examples:
+- The meeting could've been an email. The email could've been a thought I kept to myself.
+- My boss said have a great day. So I went home.
+- I love deadlines. The whooshing sound they make as they fly past.
+
+## Sports
+Topic words: football, cricket, rugby, sport, team, match, score, win, lose, bench, goal.
+Voice: armchair pundit. Mildly outraged at all times.
+Examples:
+- I asked the coach to put me in. He said the team needs me. Not as a player. As a deterrent.
+- Cricket is the only sport where being too hot, too wet, and too cold can all stop play. Three excuses, one tea break.
+
+## Family
+Topic words: child, kids, son, daughter, mum, dad, family, grandkids, parent, holiday.
+Voice: loving but slightly exhausted. The dad-iest dad voice.
+Examples:
+- I asked my son what he wanted for dinner. He said something nice. So I closed the kitchen.
+- I'm not saying my kids don't listen. I'm saying I've been speaking to a houseplant for fourteen years and got the same result.
+
+## Travel
+Topic words: travel, holiday, trip, plane, car, train, hotel, suitcase, passport, abroad.
+Voice: slightly grumbling. The trip is always more chaotic than planned.
+Examples:
+- Sat-nav said in 100 metres turn left. Ended up at someone's wedding. Lovely cake, mind.
+- I asked for a window seat. They gave me a middle. The window was metaphorical.`;
+
+      // Standard short stopwords (drop common words from queries before BM25
+      // scoring; keeps retrieval focused on content terms).
+      const RAG_STOPWORDS = new Set([
+        "a","an","and","are","as","at","be","but","by","do","does","for",
+        "from","had","has","have","he","her","his","how","i","if","in","is",
+        "it","its","may","me","might","my","of","on","or","she","should",
+        "so","some","than","that","the","their","them","they","this","to",
+        "was","we","were","what","when","where","which","who","why","will",
+        "with","would","you","your"
+      ]);
+
+      function ragTokenise(text) {
+        return (text.toLowerCase().match(/[\p{L}\p{N}]+/gu) || []);
+      }
+
+      function bm25Rank(query, chunks) {
+        if (!chunks.length) return [];
+        const k1 = 1.5, b = 0.75;
+        const tokenised = chunks.map((c) => ragTokenise(c));
+        const lens = tokenised.map((t) => t.length);
+        const N = chunks.length;
+        const avgLen = lens.reduce((s, l) => s + l, 0) / N;
+        const df = new Map();
+        for (const tokens of tokenised) {
+          const seen = new Set(tokens);
+          for (const t of seen) df.set(t, (df.get(t) || 0) + 1);
+        }
+        const queryTerms = [...new Set(ragTokenise(query))]
+          .filter((t) => !RAG_STOPWORDS.has(t));
+        return tokenised
+          .map((tokens, i) => {
+            const tf = new Map();
+            for (const t of tokens) tf.set(t, (tf.get(t) || 0) + 1);
+            let score = 0;
+            for (const q of queryTerms) {
+              const f = tf.get(q) || 0;
+              if (!f) continue;
+              const dft = df.get(q) || 0;
+              const idf = Math.log((N - dft + 0.5) / (dft + 0.5) + 1);
+              const norm =
+                (f * (k1 + 1)) /
+                (f + k1 * (1 - b + (b * lens[i]) / avgLen));
+              score += idf * norm;
+            }
+            return { idx: i, score };
+          })
+          .sort((a, b) => b.score - a.score);
+      }
+
+      // Index the joke library: one chunk per topic block (split on "## ")
+      // so BM25 can rank topic-relevant chunks together.
+      const JOKE_CHUNKS = JOKE_LIBRARY
+        .split(/\n## /)
+        .map((c, i) => (i === 0 ? c : "## " + c))
+        .map((c) => c.trim())
+        .filter(Boolean);
+
+      function retrieveJokeContext(userMessage, k = 2) {
+        const ranked = bm25Rank(userMessage, JOKE_CHUNKS)
+          .filter((r) => r.score > 0)
+          .slice(0, k);
+        if (ranked.length === 0) return "";
+        const blocks = ranked.map((r) => JOKE_CHUNKS[r.idx]);
+        console.debug(
+          "[dad_jokes RAG] retrieved",
+          ranked.length,
+          "topic block(s) for:",
+          JSON.stringify(userMessage)
+        );
+        for (const r of ranked) {
+          console.debug(
+            "  ·",
+            JOKE_CHUNKS[r.idx].split("\n")[0],
+            "(score " + r.score.toFixed(2) + ")"
+          );
+        }
+        return blocks.join("\n\n---\n\n");
+      }
+
       const MODEL = "gpt-5.4-mini";
       // gpt-5.4-mini is reasoning-tuned — temperature and top_p must stay at
       // their server defaults, so they're not sent on the request.
@@ -1285,10 +1445,21 @@
       }
 
       async function streamReply(targetEl) {
+        // Pull the latest user message and retrieve any topic-relevant joke
+        // blocks. Injected as a "Relevant material" section in the system
+        // prompt — same shape as the lmt-chatbot-rag class fork.
+        const lastUserMessage =
+          [...history].reverse().find((h) => h.role === "user")?.content || "";
+        const retrieved = lastUserMessage
+          ? retrieveJokeContext(lastUserMessage)
+          : "";
+        const augmentedSystem = retrieved
+          ? `${SYSTEM_PROMPT}\n\n---\n\n# Relevant material\n\nUse the following voice notes and examples as inspiration. Don't quote them verbatim — write something fresh in the same spirit.\n\n${retrieved}`
+          : SYSTEM_PROMPT;
         const payload = {
           model: MODEL,
           messages: [
-            { role: "system", content: SYSTEM_PROMPT },
+            { role: "system", content: augmentedSystem },
             ...history,
           ],
           max_completion_tokens: MAX_TOKENS,
