@@ -1172,20 +1172,44 @@ Examples:
         const ranked = bm25Rank(userMessage, JOKE_CHUNKS)
           .filter((r) => r.score > 0)
           .slice(0, k);
-        if (ranked.length === 0) return { text: "", topics: [] };
-        const topics = ranked.map((r) => {
-          const text = JOKE_CHUNKS[r.idx];
-          const name = text.split("\n")[0].replace(/^##\s*/, "");
-          return { name, text, score: r.score };
-        });
+        let topics;
+        let mode;
+        if (ranked.length > 0) {
+          mode = "matched";
+          topics = ranked.map((r) => {
+            const text = JOKE_CHUNKS[r.idx];
+            const name = text.split("\n")[0].replace(/^##\s*/, "");
+            return { name, text, score: r.score, random: false };
+          });
+        } else {
+          // Vague query (e.g. "tell me a joke") — no topic words after the
+          // stop-word filter. Fall back to k random topic blocks so the
+          // model still gets some inspiration and the badge still appears.
+          mode = "random";
+          const idxs = JOKE_CHUNKS.map((_, i) => i);
+          for (let i = idxs.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [idxs[i], idxs[j]] = [idxs[j], idxs[i]];
+          }
+          topics = idxs.slice(0, k).map((idx) => {
+            const text = JOKE_CHUNKS[idx];
+            const name = text.split("\n")[0].replace(/^##\s*/, "");
+            return { name, text, score: 0, random: true };
+          });
+        }
         console.debug(
-          "[dad_jokes RAG] retrieved",
+          "[dad_jokes RAG]",
+          mode,
           topics.length,
           "topic block(s) for:",
           JSON.stringify(userMessage)
         );
         for (const t of topics) {
-          console.debug("  ·", t.name, "(score " + t.score.toFixed(2) + ")");
+          console.debug(
+            "  ·",
+            t.name,
+            t.random ? "(random fallback)" : "(score " + t.score.toFixed(2) + ")"
+          );
         }
         return {
           text: topics.map((t) => t.text).join("\n\n---\n\n"),
