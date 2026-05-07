@@ -467,6 +467,63 @@
         color: var(--blue-ink);
         border-bottom-left-radius: 6px;
       }
+      /* "📖 from: …" badge below the assistant bubble. Hover/focus reveals
+         the actual joke-library chunks BM25 surfaced for that turn — a
+         visible RAG indicator for the class demo. */
+      .rag-pulled {
+        position: relative;
+        align-self: flex-start;
+        margin-top: .3rem;
+        padding: .15rem .6rem;
+        font-size: .72rem;
+        font-weight: 500;
+        color: var(--blue-deep);
+        background: rgba(207, 223, 230, .55);
+        border: 1px dashed var(--blue);
+        border-radius: 999px;
+        cursor: help;
+        outline: none;
+        user-select: none;
+      }
+      .rag-pulled:focus-visible {
+        border-style: solid;
+        border-color: var(--blue-deep);
+      }
+      .rag-pulled .rag-popup {
+        position: absolute;
+        top: calc(100% + .4rem);
+        right: 0;
+        left: auto;
+        width: min(480px, calc(100vw - 3rem));
+        box-sizing: border-box;
+        max-height: 320px;
+        overflow-y: auto;
+        padding: .6rem .75rem;
+        background: #fff;
+        border: 1px solid var(--blue);
+        border-radius: 12px;
+        color: var(--blue-ink);
+        font-size: .74rem;
+        font-weight: 400;
+        line-height: 1.45;
+        text-align: left;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        box-shadow: 0 8px 24px rgba(31, 62, 74, .18);
+        opacity: 0;
+        pointer-events: none;
+        transition: opacity 120ms ease;
+        z-index: 30;
+      }
+      .rag-pulled.rag-pulled-left-anchor .rag-popup {
+        right: auto;
+        left: 0;
+      }
+      .rag-pulled:hover .rag-popup,
+      .rag-pulled:focus-within .rag-popup {
+        opacity: 1;
+        pointer-events: auto;
+      }
       .msg.error {
         align-self: stretch;
         background: #fde4e1;
@@ -802,79 +859,216 @@
       // header, giving the model topic-specific voice notes and example
       // jokes without bloating every request with the whole library.
       const JOKE_LIBRARY = `## Cats
-Topic words: cat, kitten, feline, paw, claw, purr, meow, whisker, kitty.
+Topic words: cat, kitten, feline, paw, claw, purr, meow, whisker, kitty, lap, tail.
 Voice: aloof, deadpan, faintly judgemental.
 Examples:
 - Why did the cat sit on the laptop? To keep an eye on the mouse.
 - Cats wear fur coats. They never go out without one.
-- I tried to teach my cat to fetch. It ignored me. Mission accomplished — that's exactly what cats are for.
+- What do you call a cat that just stole your wallet? A purr-petrator.
+- What kind of music do cats hate? Anything with a string section.
+- I tried to teach my cat fetch. It ignored me. Mission accomplished — that's exactly what cats are for.
 
 ## Dogs
-Topic words: dog, puppy, woof, bark, tail, fetch, walkies, lead.
+Topic words: dog, puppy, woof, bark, tail, fetch, walkies, lead, paw, retriever, terrier.
 Voice: enthusiastic, slightly chaotic. Match the energy.
 Examples:
 - Why don't dogs dance? Two left feet. And two right ones.
-- The dog won't fetch his ball. I think he's playing fetch with his expectations of me.
+- Why did the dog sit in the shade? He didn't want to be a hot dog.
+- What do you call a dog magician? A labracadabrador.
+- My dog has no nose. How does he smell? Awful, since you ask.
 - I told my dog he's a good boy. He believed me. That's the whole trick, really.
 
+## Animals
+Topic words: animal, fish, bird, cow, sheep, horse, elephant, bee, frog, chicken, pig, duck, lion, bear, owl.
+Voice: deadpan zoology. Treat each fact with light suspicion.
+Examples:
+- What do you call a fish with no eyes? A fsh.
+- Why don't elephants use computers? They're afraid of the mouse.
+- Why don't oysters share their pearls? Because they're shellfish.
+- What do you call a sleeping bull? A bulldozer.
+- Why did the chicken cross the playground? To get to the other slide.
+- What do you call a bear with no teeth? A gummy bear.
+
+## Food
+Topic words: food, dinner, breakfast, lunch, sandwich, soup, salad, kitchen, recipe, cooking, meal, cheese, bread, eggs, pasta.
+Voice: fond memories of bad meals. Deadpan complaint.
+Examples:
+- I'm on a seafood diet. I see food, I eat it.
+- What do you call cheese that isn't yours? Nacho cheese.
+- Why did the tomato turn red? It saw the salad dressing.
+- I made alphabet soup for dinner. By the end I'd written my will.
+- I said I'd cook tonight. What I meant was I'd press buttons on the microwave with intent.
+- Two eggs in a pan. One says "It's hot in here." The other says "A talking egg."
+
 ## Coffee
-Topic words: coffee, espresso, latte, americano, brew, beans, caffeine, mug.
+Topic words: coffee, espresso, latte, americano, cappuccino, brew, beans, caffeine, mug, barista, kettle.
 Voice: weary first-thing-in-the-morning energy.
 Examples:
 - A bad coffee is technically still coffee. That's the only forgiveness it gets from me.
+- Decaf coffee is just hot bean water with broken dreams.
+- Why did the espresso file a police report? It got mugged.
 - I asked the barista for a strong coffee. He said something unkind about my life choices. That was the strong bit.
+- I don't have a problem with coffee. I have a problem without coffee.
+
+## Weather
+Topic words: weather, rain, sun, snow, storm, cold, hot, cloud, forecast, umbrella, fog, wind, breeze.
+Voice: British. Always slightly disappointed by the forecast.
+Examples:
+- What did one rain cloud say to the other? I'm mist.
+- Why is the sky so high? So birds don't bump their heads.
+- Three seasons in one day. Lovely, that. Pack accordingly.
+- Liquid sunshine, that — what we used to call a downpour.
+- The forecast said sunny intervals. The intervals between the rain.
 
 ## Computers
-Topic words: computer, laptop, software, code, bug, file, click, mouse, keyboard, RAM.
+Topic words: computer, laptop, software, code, bug, file, click, mouse, keyboard, RAM, internet, wifi, password, screen, programmer.
 Voice: dry, faint exasperation with technology.
 Examples:
 - Why was the computer cold? Someone left its Windows open.
 - I'd tell you a UDP joke but you might not get it.
 - My computer beat me at chess. Then it lost to me at kickboxing. Balance restored.
-
-## Weather
-Topic words: weather, rain, sun, snow, storm, cold, hot, cloud, forecast, umbrella.
-Voice: British. Always slightly disappointed by the forecast.
-Examples:
-- Liquid sunshine, that — what we used to call a downpour.
-- The forecast said sunny intervals. The intervals between the rain.
-- Three seasons in one day. Lovely, that. Pack accordingly.
-
-## Food
-Topic words: food, dinner, breakfast, sandwich, soup, salad, kitchen, recipe, cooking, meal.
-Voice: fond memories of bad meals. Deadpan complaint.
-Examples:
-- I made soup for dinner. Alphabet soup. By the end I'd written my will.
-- I said I'd cook tonight. What I meant was I'd press buttons on the microwave with intent.
+- Why did the programmer quit his job? He didn't get arrays.
+- There are 10 kinds of people. Those who understand binary and those who don't.
+- I changed my password to 'incorrect'. Now my computer tells me whenever I forget.
 
 ## Work
-Topic words: work, office, meeting, email, boss, deadline, Monday, Friday, weekend, job.
+Topic words: work, office, meeting, email, boss, deadline, Monday, Friday, weekend, job, colleague, salary, project.
 Voice: world-weary middle-aged. Tea and silent grievance.
 Examples:
 - The meeting could've been an email. The email could've been a thought I kept to myself.
 - My boss said have a great day. So I went home.
 - I love deadlines. The whooshing sound they make as they fly past.
+- I'm not lazy. I'm on energy-saving mode.
+- My job is so secret even I don't know what I do.
+- I told my boss three companies were after me. He asked which. I said gas, electric, and water.
+
+## Family
+Topic words: child, kids, son, daughter, mum, dad, family, grandkids, parent, baby, sibling, brother, sister.
+Voice: loving but slightly exhausted. The dad-iest dad voice.
+Examples:
+- I asked my son what he wanted for dinner. He said something nice. So I closed the kitchen.
+- I'm not saying my kids don't listen. I've been speaking to a houseplant for fourteen years and got the same result.
+- I told my children I'd left them a fortune. I meant the cookie tin.
+- The secret to parenting? Lower the bar. Then trip over it.
+- I asked my dad for his best joke. He said "you." Decades later, still my favourite.
+
+## Travel
+Topic words: travel, holiday, trip, plane, train, hotel, suitcase, passport, abroad, vacation, airport, luggage, tourist.
+Voice: slightly grumbling. The trip is always more chaotic than planned.
+Examples:
+- Sat-nav said in 100 metres turn left. Ended up at someone's wedding. Lovely cake, mind.
+- I asked for a window seat. They gave me a middle. The window was metaphorical.
+- I always pack light. Sometimes I forget the suitcase entirely.
+- The hotel said free Wi-Fi in the lobby. Apparently I'm meant to sleep in the lobby.
+- I wanted to go on holiday. The exchange rate said try again next year.
 
 ## Sports
-Topic words: football, cricket, rugby, sport, team, match, score, win, lose, bench, goal.
+Topic words: football, cricket, rugby, sport, team, match, score, win, lose, bench, goal, tennis, golf, gym, fitness.
 Voice: armchair pundit. Mildly outraged at all times.
 Examples:
 - I asked the coach to put me in. He said the team needs me. Not as a player. As a deterrent.
 - Cricket is the only sport where being too hot, too wet, and too cold can all stop play. Three excuses, one tea break.
+- I joined a gym. They never call.
+- I'm great at running into furniture. It's my only sport.
+- Golf is a good walk spoiled. Tennis is a good cardigan ruined.
 
-## Family
-Topic words: child, kids, son, daughter, mum, dad, family, grandkids, parent, holiday.
-Voice: loving but slightly exhausted. The dad-iest dad voice.
+## Music
+Topic words: music, song, band, guitar, piano, drums, singer, concert, album, dance, note, melody, choir.
+Voice: appreciative but easily distracted by puns.
 Examples:
-- I asked my son what he wanted for dinner. He said something nice. So I closed the kitchen.
-- I'm not saying my kids don't listen. I'm saying I've been speaking to a houseplant for fourteen years and got the same result.
+- Why did the pianist keep banging his head against the keys? He was playing by ear.
+- I used to be a banker but I lost interest.
+- What do you call a musical insect? A humbug.
+- Why do drummers always lose their keys? They never know where the beat is.
+- My band's called 1023MB. We haven't had any gigs yet.
 
-## Travel
-Topic words: travel, holiday, trip, plane, car, train, hotel, suitcase, passport, abroad.
-Voice: slightly grumbling. The trip is always more chaotic than planned.
+## Books
+Topic words: book, novel, story, read, library, page, chapter, author, write, bookshop, paperback, fiction.
+Voice: literate, mildly smug, fond of pun-traps.
 Examples:
-- Sat-nav said in 100 metres turn left. Ended up at someone's wedding. Lovely cake, mind.
-- I asked for a window seat. They gave me a middle. The window was metaphorical.`;
+- I'm reading a book about anti-gravity. It's impossible to put down.
+- I read a book on glue. Couldn't put it down.
+- I read a book on helium. Couldn't put it down either. It just kept floating.
+- I started a band called Dictionary. We have great chemistry but our songs all sound the same.
+- A library is a quiet riot of opinions. Mostly they keep it to themselves.
+
+## Time
+Topic words: time, monday, tuesday, friday, weekend, morning, evening, year, hour, minute, watch, clock, tomorrow, today.
+Voice: aware of the passage of time. Faintly resentful of Mondays.
+Examples:
+- Why don't Mondays ever apologise? They're never sorry enough.
+- Time flies like an arrow. Fruit flies like a banana.
+- I told my watch a joke. It didn't laugh. Tough crowd.
+- The early bird catches the worm. The second mouse gets the cheese.
+- I'm not procrastinating. I'm front-loading my regret.
+
+## Money
+Topic words: money, cash, bank, shopping, price, buy, sell, expensive, cheap, wallet, card, account, bill, save.
+Voice: gentle disbelief at modern prices.
+Examples:
+- I went shopping for a watch. Nothing felt right.
+- The bank teller said "have a nice day." So I left without robbing the place.
+- I asked the cashier if I could pay with cash. She said sure. So I just thought about money very hard.
+- Compound interest is the eighth wonder of the world. The other seven are the ones I couldn't afford.
+- The price tag said as seen on TV. I'd seen it on TV. Still couldn't afford it.
+
+## Health
+Topic words: doctor, dentist, hospital, sick, medicine, exercise, sleep, tired, eyes, ears, knee, back, sneeze.
+Voice: low-key complaint. Light worry. Family-friendly only.
+Examples:
+- I told my dentist my teeth are turning yellow. He said wear a brown tie.
+- Why do gymnasts sleep so well? Because they always tumble into bed.
+- My doctor said I'm in great shape for my age. I asked which age. He said 92.
+- I tried meditating. Lasted about three minutes before I started planning lunch.
+- My back went out for a curry. It hasn't returned.
+
+## School
+Topic words: school, class, teacher, student, exam, lesson, homework, pupil, university, college, lecture, test.
+Voice: rueful student energy. The homework was definitely eaten by something.
+Examples:
+- Why was the equal sign so humble? Because it knew it wasn't less than or greater than anyone else.
+- Why was the maths book sad? It had too many problems.
+- I told my history teacher a joke about the past. He said it's not funny anymore.
+- I failed maths so many times the school took my calculator away. Said it counted as cheating.
+- I went to a school for invisible kids. I never saw the playground.
+
+## Garden
+Topic words: garden, plant, flower, tree, grass, lawn, soil, seed, leaf, vegetable, tomato, herbs.
+Voice: hopeful gardener defeated by the same things every year.
+Examples:
+- My houseplant said it needed space. I gave it the whole windowsill. Still complained.
+- I started gardening. The compost heap is the most successful thing I've grown.
+- Why did the gardener plant a clock? She wanted to grow some thyme.
+- I've named my houseplants after my exes. They keep dying too.
+- My tomatoes won't ripen. The pep talks aren't working either.
+
+## Maths
+Topic words: maths, math, number, count, equation, calculator, statistics, percent, geometry, fraction.
+Voice: numbers-shy parent suddenly confident with arithmetic puns.
+Examples:
+- Why was 6 afraid of 7? Because 7, 8, 9.
+- I'm on a strict numbers diet. I only eat what counts.
+- Parallel lines have so much in common. It's a shame they'll never meet.
+- I told a statistics joke once. The audience didn't laugh. The mean response was disappointing.
+- 110% of statistics are made up on the spot.
+
+## Cars
+Topic words: car, drive, driving, motorway, traffic, petrol, diesel, mechanic, garage, tyre, engine, parking, license.
+Voice: traffic-jammed and weary. The dashboard is judging you.
+Examples:
+- I bought a car with no doors. It was a car-pet.
+- Why did the bicycle fall over? Because it was two-tired.
+- My car broke down on the motorway. The mechanic said the engine had given up. So have I, frankly.
+- The petrol gauge says empty. The bank account agrees.
+- I drove past a sign saying watch for falling rocks. Watched. Nothing fell. False advertising.
+
+## Spooky
+Topic words: ghost, spooky, halloween, haunt, witch, vampire, skeleton, scare, pumpkin, costume.
+Voice: gently spooky. Jokes do the haunting for you.
+Examples:
+- What do ghosts wear in the rain? Boo-ts.
+- Why don't ghosts haunt empty offices? Nothing scarier than a dead inbox.
+- Why didn't the skeleton go to the party? He had no body to go with.`;
 
       // Standard short stopwords (drop common words from queries before BM25
       // scoring; keeps retrieval focused on content terms).
@@ -933,26 +1127,70 @@ Examples:
         .map((c) => c.trim())
         .filter(Boolean);
 
+      // Render a "📖 from: topic1 · topic2" badge below an assistant bubble,
+      // showing which joke-library topic blocks BM25 surfaced for that turn.
+      // Hover/focus reveals the actual chunks so students can see RAG working
+      // without opening Detailed JSON.
+      function appendRagBadge(wrap, topics) {
+        const badge = document.createElement("div");
+        badge.className = "rag-pulled";
+        badge.tabIndex = 0;
+        const labelText =
+          "📖 from: " +
+          topics
+            .map((t) => t.name.toLowerCase())
+            .join(" · ");
+        const label = document.createElement("span");
+        label.className = "rag-pulled-label";
+        label.textContent = labelText;
+        badge.appendChild(label);
+        const popup = document.createElement("div");
+        popup.className = "rag-popup";
+        popup.textContent = topics.map((t) => t.text).join("\n\n---\n\n");
+        badge.appendChild(popup);
+        // Smart anchor: pick whichever side has more space, clamp width to
+        // fit, so the popup never overflows the viewport.
+        const positionPopup = () => {
+          const rect = badge.getBoundingClientRect();
+          const pad = 8;
+          const spaceLeft = rect.right - pad;
+          const spaceRight = window.innerWidth - rect.left - pad;
+          if (spaceRight > spaceLeft) {
+            badge.classList.add("rag-pulled-left-anchor");
+            popup.style.maxWidth = Math.min(480, spaceRight) + "px";
+          } else {
+            badge.classList.remove("rag-pulled-left-anchor");
+            popup.style.maxWidth = Math.min(480, spaceLeft) + "px";
+          }
+        };
+        badge.addEventListener("mouseenter", positionPopup);
+        badge.addEventListener("focusin", positionPopup);
+        wrap.appendChild(badge);
+      }
+
       function retrieveJokeContext(userMessage, k = 2) {
         const ranked = bm25Rank(userMessage, JOKE_CHUNKS)
           .filter((r) => r.score > 0)
           .slice(0, k);
-        if (ranked.length === 0) return "";
-        const blocks = ranked.map((r) => JOKE_CHUNKS[r.idx]);
+        if (ranked.length === 0) return { text: "", topics: [] };
+        const topics = ranked.map((r) => {
+          const text = JOKE_CHUNKS[r.idx];
+          const name = text.split("\n")[0].replace(/^##\s*/, "");
+          return { name, text, score: r.score };
+        });
         console.debug(
           "[dad_jokes RAG] retrieved",
-          ranked.length,
+          topics.length,
           "topic block(s) for:",
           JSON.stringify(userMessage)
         );
-        for (const r of ranked) {
-          console.debug(
-            "  ·",
-            JOKE_CHUNKS[r.idx].split("\n")[0],
-            "(score " + r.score.toFixed(2) + ")"
-          );
+        for (const t of topics) {
+          console.debug("  ·", t.name, "(score " + t.score.toFixed(2) + ")");
         }
-        return blocks.join("\n\n---\n\n");
+        return {
+          text: topics.map((t) => t.text).join("\n\n---\n\n"),
+          topics,
+        };
       }
 
       const MODEL = "gpt-5.4-mini";
@@ -1369,6 +1607,9 @@ Examples:
         try {
           const reply = await streamReply(loading);
           history.push({ role: "assistant", content: reply });
+          if (loading._ragTopics?.length && loading._wrap) {
+            appendRagBadge(loading._wrap, loading._ragTopics);
+          }
           if (currentThreadId) {
             const row = await saveMessage(currentThreadId, "assistant", reply);
             if (row && loading._wrap) loading._wrap.dataset.messageId = row.id;
@@ -1450,11 +1691,16 @@ Examples:
         // prompt — same shape as the lmt-chatbot-rag class fork.
         const lastUserMessage =
           [...history].reverse().find((h) => h.role === "user")?.content || "";
-        const retrieved = lastUserMessage
+        const retrievalResult = lastUserMessage
           ? retrieveJokeContext(lastUserMessage)
-          : "";
-        const augmentedSystem = retrieved
-          ? `${SYSTEM_PROMPT}\n\n---\n\n# Relevant material\n\nUse the following voice notes and examples as inspiration. Don't quote them verbatim — write something fresh in the same spirit.\n\n${retrieved}`
+          : { text: "", topics: [] };
+        const retrievedText = retrievalResult.text;
+        // Stash the retrieval result on the target element so the form
+        // handler can read it after the stream finishes and render the
+        // "📖 from: ..." badge below the bubble.
+        targetEl._ragTopics = retrievalResult.topics;
+        const augmentedSystem = retrievedText
+          ? `${SYSTEM_PROMPT}\n\n---\n\n# Relevant material\n\nUse the following voice notes and examples as inspiration. Don't quote them verbatim — write something fresh in the same spirit.\n\n${retrievedText}`
           : SYSTEM_PROMPT;
         const payload = {
           model: MODEL,
